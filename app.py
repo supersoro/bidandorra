@@ -63,13 +63,19 @@ for bloque in bloques:
     enlace_tag = bloque.find("a", class_="btn")
     enlace_detalle = "https://www.saigandorra.com" + enlace_tag["href"] if enlace_tag else None
 
-    info = {
-        "Título": titulo.get_text(strip=True) if titulo else None,
-        "Fecha y hora": fecha.find_next_sibling(string=True).strip() if fecha else None,
-        "Lugar": lugar.find_next_sibling(string=True).strip() if lugar else None,
-        "PDF BOPA": None,
-        "Enlace a detalle": enlace_detalle
-    }
+   info = {
+    "Título": titulo.get_text(strip=True) if titulo else None,
+    "Fecha y hora": fecha.find_next_sibling(string=True).strip() if fecha else None,
+    "Lugar": lugar.find_next_sibling(string=True).strip() if lugar else None,
+    "PDF BOPA": None,
+    "Enlace a detalle": enlace_detalle,
+    "tipo_bien": None,
+    "precio_salida": None,
+    "fecha_limite": None,
+    "cargas_adicionales": None,
+    "esta_alquilado": None,
+    "valor_mercado": None
+   }
 
     if enlace_detalle:
         detalle = requests.get(enlace_detalle).text
