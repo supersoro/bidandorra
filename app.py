@@ -63,19 +63,19 @@ for bloque in bloques:
     enlace_tag = bloque.find("a", class_="btn")
     enlace_detalle = "https://www.saigandorra.com" + enlace_tag["href"] if enlace_tag else None
 
-info = {
-    "Título": titulo.get_text(strip=True) if titulo else None,
-    "Fecha y hora": fecha.find_next_sibling(string=True).strip() if fecha else None,
-    "Lugar": lugar.find_next_sibling(string=True).strip() if lugar else None,
-    "PDF BOPA": None,
-    "Enlace a detalle": enlace_detalle,
-    "tipo_bien": None,
-    "precio_salida": None,
-    "fecha_limite": None,
-    "cargas_adicionales": None,
-    "esta_alquilado": None,
-    "valor_mercado": None
-}
+    info = {
+        "Título": titulo.get_text(strip=True) if titulo else None,
+        "Fecha y hora": fecha.find_next_sibling(string=True).strip() if fecha else None,
+        "Lugar": lugar.find_next_sibling(string=True).strip() if lugar else None,
+        "PDF BOPA": None,
+        "Enlace a detalle": enlace_detalle,
+        "tipo_bien": None,
+        "precio_salida": None,
+        "fecha_limite": None,
+        "cargas_adicionales": None,
+        "esta_alquilado": None,
+        "valor_mercado": None
+    }
 
     if enlace_detalle:
         detalle = requests.get(enlace_detalle).text
@@ -84,7 +84,6 @@ info = {
             url_pdf = match.group(0).replace(":=//", "://")
             info["PDF BOPA"] = url_pdf
 
-            # Extraemos el texto
             try:
                 text_pdf = extract_text(requests.get(url_pdf).content)
                 resultado = analizar_pdf_con_gpt(text_pdf)
@@ -96,14 +95,5 @@ info = {
 
     datos.append(info)
 
-df = pd.DataFrame(datos)
-
-orden_columnas = [
-    "Título", "tipo_bien", "precio_salida", "valor_mercado",
-    "Margen (€)", "fecha_limite", "esta_alquilado", "cargas_adicionales",
-    "Fecha y hora", "Lugar", "PDF BOPA", "Enlace a detalle"
-]
-
-# Mostrar con columnas ordenadas
-st.dataframe(df[[col for col in orden_columnas if col in df.columns]])
+st.dataframe(pd.DataFrame(datos))
 st.markdown("🛠️ Próximamente: IA para interpretar subastas y rellenar campos automáticamente.")
