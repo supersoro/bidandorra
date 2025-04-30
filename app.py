@@ -6,6 +6,8 @@ from openai import OpenAI
 from pdfminer.high_level import extract_text
 import re
 import json
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 st.set_page_config(page_title="Subastas Públicas de Andorra", page_icon="🔍")
 st.title("🔍 Subastas Públicas de Andorra")
@@ -82,7 +84,7 @@ for bloque in bloques:
 
     if enlace_detalle:
         detalle = requests.get(enlace_detalle).text
-        match = re.search(r'https://www\.bopa\.ad/documents/detall\?doc=[^"&\s]+', detalle)
+        match = re.search(r'https://www\\.bopa\\.ad/documents/detall\\?doc=[^"&\\s]+', detalle)
         if match:
             url_pdf = match.group(0)
             info["PDF BOPA"] = url_pdf
@@ -117,5 +119,21 @@ for bloque in bloques:
 
 df = pd.DataFrame(datos)
 st.dataframe(df.style.format(na_rep="—"), use_container_width=True, height=600)
+
+# Exportar a Google Sheets si las credenciales están disponibles
+if "gcp_service_account" in st.secrets:
+    try:
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
+        client_gs = gspread.authorize(creds)
+
+        sheet = client_gs.open("Subastas Andorra").sheet1
+        sheet.clear()
+        sheet.insert_row(df.columns.tolist(), index=1)
+        for i, row in df.iterrows():
+            sheet.insert_row(row.fillna("—").astype(str).tolist(), index=i+2)
+        st.success("✅ Datos exportados a Google Sheets correctamente")
+    except Exception as e:
+        st.warning(f"⚠️ No se pudo exportar a Google Sheets: {e}")
 
 st.markdown("🛠️ Próximamente: interpretación automática con IA de múltiples fuentes.")
