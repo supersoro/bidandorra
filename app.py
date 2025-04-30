@@ -96,5 +96,14 @@ for bloque in bloques:
 
     datos.append(info)
 
-st.dataframe(pd.DataFrame(datos))
+df = pd.DataFrame(datos)
+
+orden_columnas = [
+    "Título", "tipo_bien", "precio_salida", "valor_mercado",
+    "Margen (€)", "fecha_limite", "esta_alquilado", "cargas_adicionales",
+    "Fecha y hora", "Lugar", "PDF BOPA", "Enlace a detalle"
+]
+
+# Mostrar con columnas ordenadas
+st.dataframe(df[[col for col in orden_columnas if col in df.columns]])
 st.markdown("🛠️ Próximamente: IA para interpretar subastas y rellenar campos automáticamente.")
