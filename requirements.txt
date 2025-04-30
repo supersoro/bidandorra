@@ -4,3 +4,5 @@ requests
 pandas
 openai
 pdfminer.six
+gspread
+oauth2client
