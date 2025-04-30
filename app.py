@@ -41,7 +41,7 @@ Devuélvelo como un diccionario JSON válido, sin explicaciones, en este formato
 """
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2
         )
@@ -90,7 +90,7 @@ for bloque in bloques:
 
             try:
                 content = requests.get(url_pdf).content
-                text_pdf = extract_text(content)
+                text_pdf = extract_text(io.BytesIO(content))
 
                 if text_pdf.strip():
                     resultado = analizar_pdf_con_gpt(text_pdf)
