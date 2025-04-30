@@ -95,5 +95,7 @@ for bloque in bloques:
 
     datos.append(info)
 
-st.dataframe(pd.DataFrame(datos))
+df = pd.DataFrame(datos)
+st.dataframe(df.style.format(na_rep="—"), use_container_width=True, height=500)
+
 st.markdown("🛠️ Próximamente: IA para interpretar subastas y rellenar campos automáticamente.")
