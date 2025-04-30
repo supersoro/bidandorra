@@ -63,7 +63,7 @@ for bloque in bloques:
     enlace_tag = bloque.find("a", class_="btn")
     enlace_detalle = "https://www.saigandorra.com" + enlace_tag["href"] if enlace_tag else None
 
-   info = {
+info = {
     "Título": titulo.get_text(strip=True) if titulo else None,
     "Fecha y hora": fecha.find_next_sibling(string=True).strip() if fecha else None,
     "Lugar": lugar.find_next_sibling(string=True).strip() if lugar else None,
