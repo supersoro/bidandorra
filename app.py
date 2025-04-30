@@ -2,7 +2,7 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
-import openai
+from openai import OpenAI
 from pdfminer.high_level import extract_text
 import re
 import json
@@ -11,7 +11,7 @@ st.set_page_config(page_title="Subastas Públicas de Andorra", page_icon="🔍")
 st.title("🔍 Subastas Públicas de Andorra")
 st.markdown("Versión Cloud - Diego Soro & Jefe 🇺🇸")
 
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 def analizar_pdf_con_gpt(texto):
     prompt = f"""
@@ -39,13 +39,14 @@ Devuélvelo como un diccionario JSON válido, sin explicaciones, en este formato
     "valor_mercado": ...
 }}
 """
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2
-    )
     try:
-        return json.loads(response["choices"][0]["message"]["content"])
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2
+        )
+        content = response.choices[0].message.content
+        return json.loads(content)
     except Exception as e:
         st.warning(f"⚠️ Error analizando con GPT: {e}")
         return {}
@@ -81,7 +82,7 @@ for bloque in bloques:
 
     if enlace_detalle:
         detalle = requests.get(enlace_detalle).text
-        match = re.search(r'https://www\\.bopa\\.ad/documents/detall\\?doc=[^"&\\s]+', detalle)
+        match = re.search(r'https://www\.bopa\.ad/documents/detall\?doc=[^"&\s]+', detalle)
         if match:
             url_pdf = match.group(0)
             info["PDF BOPA"] = url_pdf
