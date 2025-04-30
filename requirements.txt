@@ -2,5 +2,5 @@ streamlit
 beautifulsoup4
 requests
 pandas
-openai
+openai>=1.0
 pdfminer.six
