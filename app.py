@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import openai
 from pdfminer.high_level import extract_text
+import re
 
 st.set_page_config(page_title="Subastas Públicas de Andorra", page_icon="🔍")
 st.title("🔍 Subastas Públicas de Andorra")
