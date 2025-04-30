@@ -75,7 +75,7 @@ for bloque in bloques:
     "cargas_adicionales": None,
     "esta_alquilado": None,
     "valor_mercado": None
-   }
+}
 
     if enlace_detalle:
         detalle = requests.get(enlace_detalle).text
