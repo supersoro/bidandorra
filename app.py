@@ -5,6 +5,7 @@ import pandas as pd
 import openai
 from pdfminer.high_level import extract_text
 import re
+import json
 
 st.set_page_config(page_title="Subastas Públicas de Andorra", page_icon="🔍")
 st.title("🔍 Subastas Públicas de Andorra")
@@ -12,11 +13,11 @@ st.markdown("Versión Cloud - Diego Soro & Jefe 🇺🇸")
 
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-def analizar_pdf_con_gpt(texto_pdf):
+def analizar_pdf_con_gpt(texto):
     prompt = f"""
 Eres un asistente experto en interpretar documentos legales de subastas públicas en Andorra.
 
-Analiza el siguiente texto extraído de un BOPA (Boletín Oficial del Principado de Andorra) y devuelve exclusivamente un diccionario JSON con los siguientes campos:
+Analiza el siguiente texto y devuelve exclusivamente un diccionario JSON con los siguientes campos:
 
 1. tipo_bien → Tipo de bien subastado (ej. inmueble, vehículo, mobiliario, etc.)
 2. precio_salida → Precio de salida de la subasta en euros. Si no se indica, deja None.
@@ -26,7 +27,7 @@ Analiza el siguiente texto extraído de un BOPA (Boletín Oficial del Principado
 6. valor_mercado → Valor estimado de mercado, si se menciona.
 
 Texto a analizar:
-{texto_pdf}
+{texto}
 
 Devuélvelo como un diccionario JSON válido, sin explicaciones, en este formato exacto:
 {{
@@ -38,15 +39,15 @@ Devuélvelo como un diccionario JSON válido, sin explicaciones, en este formato
     "valor_mercado": ...
 }}
 """
-
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2
     )
     try:
-        return eval(response["choices"][0]["message"]["content"])
-    except:
+        return json.loads(response["choices"][0]["message"]["content"])
+    except Exception as e:
+        st.warning(f"⚠️ Error analizando con GPT: {e}")
         return {}
 
 # URL del portal de subastas
@@ -74,28 +75,46 @@ for bloque in bloques:
         "fecha_limite": None,
         "cargas_adicionales": None,
         "esta_alquilado": None,
-        "valor_mercado": None
+        "valor_mercado": None,
+        "fuente_datos": None
     }
 
     if enlace_detalle:
         detalle = requests.get(enlace_detalle).text
-        match = re.search(r'https[:=]//www\\.bopa\\.ad/documents/detall\\?doc=[^"&\\s]+', detalle)
+        match = re.search(r'https://www\\.bopa\\.ad/documents/detall\\?doc=[^"&\\s]+', detalle)
         if match:
-            url_pdf = match.group(0).replace(":=//", "://")
+            url_pdf = match.group(0)
             info["PDF BOPA"] = url_pdf
+            info["fuente_datos"] = "PDF"
 
             try:
-                text_pdf = extract_text(requests.get(url_pdf).content)
-                resultado = analizar_pdf_con_gpt(text_pdf)
-                info.update(resultado)
+                content = requests.get(url_pdf).content
+                text_pdf = extract_text(content)
+
+                if text_pdf.strip():
+                    resultado = analizar_pdf_con_gpt(text_pdf)
+                    info.update(resultado)
+                else:
+                    st.warning(f"⚠️ El PDF está vacío, analizamos HTML: {url_pdf}")
+                    soup_detalle = BeautifulSoup(detalle, "html.parser")
+                    texto_visible = soup_detalle.get_text(separator="\n")
+                    resultado = analizar_pdf_con_gpt(texto_visible)
+                    info.update(resultado)
+                    info["fuente_datos"] = "HTML"
+
             except Exception as e:
                 st.warning(f"⚠️ Error al procesar PDF: {e}")
         else:
             st.warning(f"❌ No se encontró PDF en: {enlace_detalle}")
+            soup_detalle = BeautifulSoup(detalle, "html.parser")
+            texto_visible = soup_detalle.get_text(separator="\n")
+            resultado = analizar_pdf_con_gpt(texto_visible)
+            info.update(resultado)
+            info["fuente_datos"] = "HTML"
 
     datos.append(info)
 
 df = pd.DataFrame(datos)
-st.dataframe(df.style.format(na_rep="—"), use_container_width=True, height=500)
+st.dataframe(df.style.format(na_rep="—"), use_container_width=True, height=600)
 
-st.markdown("🛠️ Próximamente: IA para interpretar subastas y rellenar campos automáticamente.")
+st.markdown("🛠️ Próximamente: interpretación automática con IA de múltiples fuentes.")
