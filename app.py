@@ -31,14 +31,18 @@ Texto extraído:
 
 Devuélvelo como diccionario JSON con esas 6 claves exactas.
 """
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2
-    )
+def analizar_pdf_con_gpt(prompt):
+    import openai
+
     try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2
+        )
         return eval(response["choices"][0]["message"]["content"])
-    except:
+    except Exception as e:
+        print("Error al procesar con GPT:", e)
         return {}
 
 def extraer_info_desde_pdf(url_pdf):
