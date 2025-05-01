@@ -64,7 +64,7 @@ def analizar_pdf_con_gpt(url_pdf):
             texto = "\n".join([page.get_text() for page in doc])
 
         prompt = f"""
-Extrae la siguiente información del siguiente texto legal:
+Extrae la siguiente información del texto legal que encontrarás más abajo y responde únicamente con un diccionario JSON que contenga exactamente estas 6 claves:
 - tipo_bien
 - precio_salida
 - fecha_limite
@@ -72,9 +72,10 @@ Extrae la siguiente información del siguiente texto legal:
 - esta_alquilado
 - valor_mercado
 
-Devuélvelo como diccionario JSON con esas 6 claves exactas.
+No añadas ninguna explicación adicional, solo devuelve un JSON válido.
 Texto:
-""" + texto[:8000]
+"""
+        prompt += texto[:8000]
 
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -82,21 +83,8 @@ Texto:
             temperature=0.2
         )
         content = response["choices"][0]["message"]["content"]
-        st.write("🔍 Respuesta GPT:", content)
 
-        match = re.search(r"\{.*\}", content, re.DOTALL)
-        if match:
-            json_text = match.group(0)
-            return json.loads(json_text)
-        else:
-            return {
-                "tipo_bien": None,
-                "precio_salida": None,
-                "fecha_limite": None,
-                "cargas_adicionales": None,
-                "esta_alquilado": None,
-                "valor_mercado": None
-            }
+        return json.loads(content)
     except Exception as e:
         return {
             "tipo_bien": None,
