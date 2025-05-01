@@ -82,7 +82,21 @@ Texto:
             temperature=0.2
         )
         content = response["choices"][0]["message"]["content"]
-        return json.loads(content)
+        st.write("🔍 Respuesta GPT:", content)
+
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if match:
+            json_text = match.group(0)
+            return json.loads(json_text)
+        else:
+            return {
+                "tipo_bien": None,
+                "precio_salida": None,
+                "fecha_limite": None,
+                "cargas_adicionales": None,
+                "esta_alquilado": None,
+                "valor_mercado": None
+            }
     except Exception as e:
         return {
             "tipo_bien": None,
