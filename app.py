@@ -35,7 +35,7 @@ def obtener_subastas():
 def encontrar_pdf_en_detalle(url_detalle):
     try:
         detalle_html = requests.get(url_detalle).text
-        match = re.search(r'https://www\\.bopa\\.ad/documents/detall\\?doc=[^"&\\s]+', detalle_html)
+        match = re.search(r'https://www\.bopa\.ad/Documents/Detall\?doc=[\w_]+', detalle_html)
         return match.group(0) if match else None
     except Exception as e:
         return None
@@ -46,6 +46,11 @@ for sub in subastas:
     enlace = sub.get("Enlace a detalle")
     sub["PDF BOPA"] = encontrar_pdf_en_detalle(enlace) if enlace else None
 
+# Mostrar resultados en Streamlit
+df = pd.DataFrame(subastas)
+st.dataframe(df, use_container_width=True)
+
+st.markdown("🧠 Próximamente: Agente de interpretación legal con GPT + Agente de mercado")
 # Mostrar resultados en Streamlit
 df = pd.DataFrame(subastas)
 st.dataframe(df, use_container_width=True)
