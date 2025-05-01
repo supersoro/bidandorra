@@ -51,8 +51,3 @@ df = pd.DataFrame(subastas)
 st.dataframe(df, use_container_width=True)
 
 st.markdown("🧠 Próximamente: Agente de interpretación legal con GPT + Agente de mercado")
-# Mostrar resultados en Streamlit
-df = pd.DataFrame(subastas)
-st.dataframe(df, use_container_width=True)
-
-st.markdown("🧠 Próximamente: Agente de interpretación legal con GPT + Agente de mercado")
