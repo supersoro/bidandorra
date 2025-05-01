@@ -2,7 +2,3 @@ streamlit
 beautifulsoup4
 requests
 pandas
-openai
-pdfminer.six
-gspread
-oauth2client
