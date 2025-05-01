@@ -3,15 +3,15 @@ from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import re
-import openai
 import os
 import json
+from openai import OpenAI
 
 st.set_page_config(page_title="Subastas Públicas de Andorra", page_icon="🔍")
 st.title("🔍 Subastas Públicas de Andorra")
 st.markdown("Versión Agentes - Diego Soro & Jefe 🇺🇸")
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI()
 model = os.getenv("OPENAI_MODEL", "gpt-4")
 
 # Agente 1: Scraper del listado principal
@@ -77,12 +77,12 @@ No añadas ninguna explicación adicional, solo devuelve un JSON válido.
 Texto:
 {texto[:8000]}
 """
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2
         )
-        content = response["choices"][0]["message"]["content"]
+        content = response.choices[0].message.content
         st.code(content, language="json")  # Para depuración visual
         return json.loads(content)
     except Exception as e:
