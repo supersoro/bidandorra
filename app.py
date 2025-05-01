@@ -38,17 +38,21 @@ def obtener_subastas():
         })
     return subastas
 
-# Agente 2: Analiza si hay PDF y lo extrae
+# Agente 2: Extrae enlace al documento completo del BOPA (no al PDF resumen)
 def encontrar_pdf_en_detalle(url_detalle):
     try:
         detalle_html = requests.get(url_detalle).text
-        match = re.search(r'https://www\\.bopa\\.ad/Documents/Detall\\?doc=[\\w_]+', detalle_html)
-        return match.group(0) if match else None
+        soup = BeautifulSoup(detalle_html, "html.parser")
+        enlaces = soup.find_all("a", href=True)
+        for a in enlaces:
+            href = a["href"]
+            if "bopa.ad/Documents/Detall" in href:
+                return href if href.startswith("http") else "https://www.bopa.ad" + href
+        return None
     except Exception as e:
         return None
 
-# Agente 3: Extrae texto del PDF y lo interpreta con GPT
-
+# Agente 3: Extrae texto del documento del BOPA y lo interpreta con GPT
 def analizar_pdf_con_gpt(url_pdf):
     try:
         response = requests.get(url_pdf)
