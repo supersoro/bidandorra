@@ -3,10 +3,17 @@ from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import re
+import tempfile
+import fitz  # PyMuPDF
+import openai
+import os
+import json
 
 st.set_page_config(page_title="Subastas Públicas de Andorra", page_icon="🔍")
 st.title("🔍 Subastas Públicas de Andorra")
 st.markdown("Versión Agentes - Diego Soro & Jefe 🇺🇸")
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Agente 1: Scraper del listado principal
 def obtener_subastas():
@@ -35,19 +42,80 @@ def obtener_subastas():
 def encontrar_pdf_en_detalle(url_detalle):
     try:
         detalle_html = requests.get(url_detalle).text
-        match = re.search(r'https://www\.bopa\.ad/Documents/Detall\?doc=[\w_]+', detalle_html)
+        match = re.search(r'https://www\\.bopa\\.ad/Documents/Detall\\?doc=[\\w_]+', detalle_html)
         return match.group(0) if match else None
     except Exception as e:
         return None
 
-# Ejecutar agentes 1 y 2
+# Agente 3: Extrae texto del PDF y lo interpreta con GPT
+
+def analizar_pdf_con_gpt(url_pdf):
+    try:
+        response = requests.get(url_pdf)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+            tmp_file.write(response.content)
+            tmp_path = tmp_file.name
+
+        with fitz.open(tmp_path) as doc:
+            texto = "\n".join([page.get_text() for page in doc])
+
+        prompt = f"""
+Extrae la siguiente información del siguiente texto legal:
+- tipo_bien
+- precio_salida
+- fecha_limite
+- cargas_adicionales
+- esta_alquilado
+- valor_mercado
+
+Devuélvelo como diccionario JSON con esas 6 claves exactas.
+Texto:
+""" + texto[:8000]
+
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2
+        )
+        content = response["choices"][0]["message"]["content"]
+        return json.loads(content)
+    except Exception as e:
+        return {
+            "tipo_bien": None,
+            "precio_salida": None,
+            "fecha_limite": None,
+            "cargas_adicionales": None,
+            "esta_alquilado": None,
+            "valor_mercado": None
+        }
+
+# Ejecutar agentes 1, 2 y 3
 subastas = obtener_subastas()
+resultados = []
+
 for sub in subastas:
     enlace = sub.get("Enlace a detalle")
-    sub["PDF BOPA"] = encontrar_pdf_en_detalle(enlace) if enlace else None
+    pdf_url = encontrar_pdf_en_detalle(enlace) if enlace else None
+    sub["PDF BOPA"] = pdf_url
+
+    if pdf_url:
+        campos = analizar_pdf_con_gpt(pdf_url)
+        sub.update(campos)
+        sub["fuente_datos"] = "GPT"
+    else:
+        sub.update({
+            "tipo_bien": None,
+            "precio_salida": None,
+            "fecha_limite": None,
+            "cargas_adicionales": None,
+            "esta_alquilado": None,
+            "valor_mercado": None,
+            "fuente_datos": "HTML"
+        })
+    resultados.append(sub)
 
 # Mostrar resultados en Streamlit
-df = pd.DataFrame(subastas)
+df = pd.DataFrame(resultados)
 st.dataframe(df, use_container_width=True)
 
 st.markdown("🧠 Próximamente: Agente de interpretación legal con GPT + Agente de mercado")
