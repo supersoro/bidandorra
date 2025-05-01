@@ -77,14 +77,17 @@ No añadas ninguna explicación adicional, solo devuelve un JSON válido.
 Texto:
 {texto[:8000]}
 """
+
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2
         )
+
         content = response.choices[0].message.content
-        st.code(content, language="json")  # Para depuración visual
+        st.code(content, language="json")  # Visualización en la app
         return json.loads(content)
+
     except Exception as e:
         st.error(f"❌ Error al analizar con GPT: {e}")
         return {
