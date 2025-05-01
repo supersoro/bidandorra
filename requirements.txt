@@ -3,3 +3,4 @@ beautifulsoup4
 requests
 pandas
 pymupdf
+openai>=1.1.1
