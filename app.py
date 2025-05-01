@@ -8,6 +8,7 @@ import re
 import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import io
 
 st.set_page_config(page_title="Subastas Públicas de Andorra", page_icon="🔍")
 st.title("🔍 Subastas Públicas de Andorra")
@@ -43,7 +44,7 @@ Devuélvelo como un diccionario JSON válido, sin explicaciones, en este formato
 """
     try:
         response = client.chat.completions.create(
-            model="gpt-4-turbo",
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2
         )
