@@ -12,6 +12,7 @@ st.title("🔍 Subastas Públicas de Andorra")
 st.markdown("Versión Agentes - Diego Soro & Jefe 🇺🇸")
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+model = os.getenv("OPENAI_MODEL", "gpt-4")
 
 # Agente 1: Scraper del listado principal
 def obtener_subastas():
@@ -47,7 +48,8 @@ def encontrar_url_bopa_html(url_detalle):
             if "bopa.ad/Documents/Detall" in href:
                 return href if href.startswith("http") else "https://www.bopa.ad" + href
         return None
-    except Exception:
+    except Exception as e:
+        st.error(f"❌ Error al buscar enlace BOPA: {e}")
         return None
 
 # Agente 3: Extrae texto del HTML del BOPA y lo interpreta con GPT
@@ -76,13 +78,15 @@ Texto:
 {texto[:8000]}
 """
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2
         )
         content = response["choices"][0]["message"]["content"]
+        st.code(content, language="json")  # Para depuración visual
         return json.loads(content)
-    except Exception:
+    except Exception as e:
+        st.error(f"❌ Error al analizar con GPT: {e}")
         return {
             "tipo_bien": None,
             "precio_salida": None,
