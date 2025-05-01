@@ -3,8 +3,6 @@ from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import re
-import tempfile
-import fitz  # PyMuPDF
 import openai
 import os
 import json
@@ -38,8 +36,8 @@ def obtener_subastas():
         })
     return subastas
 
-# Agente 2: Extrae enlace al documento completo del BOPA (no al PDF resumen)
-def encontrar_pdf_en_detalle(url_detalle):
+# Agente 2: Extrae enlace al documento completo del BOPA (HTML, no PDF)
+def encontrar_url_bopa_html(url_detalle):
     try:
         detalle_html = requests.get(url_detalle).text
         soup = BeautifulSoup(detalle_html, "html.parser")
@@ -49,19 +47,20 @@ def encontrar_pdf_en_detalle(url_detalle):
             if "bopa.ad/Documents/Detall" in href:
                 return href if href.startswith("http") else "https://www.bopa.ad" + href
         return None
-    except Exception as e:
+    except Exception:
         return None
 
-# Agente 3: Extrae texto del documento del BOPA y lo interpreta con GPT
-def analizar_pdf_con_gpt(url_pdf):
+# Agente 3: Extrae texto del HTML del BOPA y lo interpreta con GPT
+def analizar_html_con_gpt(url_bopa):
     try:
-        response = requests.get(url_pdf)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-            tmp_file.write(response.content)
-            tmp_path = tmp_file.name
+        res = requests.get(url_bopa)
+        soup = BeautifulSoup(res.text, "html.parser")
 
-        with fitz.open(tmp_path) as doc:
-            texto = "\n".join([page.get_text() for page in doc])
+        for tag in soup(["script", "style"]):
+            tag.decompose()
+
+        texto = soup.get_text(separator="\n")
+        texto = re.sub(r"\n+", "\n", texto).strip()
 
         prompt = f"""
 Extrae la siguiente información del texto legal que encontrarás más abajo y responde únicamente con un diccionario JSON que contenga exactamente estas 6 claves:
@@ -74,18 +73,16 @@ Extrae la siguiente información del texto legal que encontrarás más abajo y r
 
 No añadas ninguna explicación adicional, solo devuelve un JSON válido.
 Texto:
+{texto[:8000]}
 """
-        prompt += texto[:8000]
-
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2
         )
         content = response["choices"][0]["message"]["content"]
-
         return json.loads(content)
-    except Exception as e:
+    except Exception:
         return {
             "tipo_bien": None,
             "precio_salida": None,
@@ -101,11 +98,11 @@ resultados = []
 
 for sub in subastas:
     enlace = sub.get("Enlace a detalle")
-    pdf_url = encontrar_pdf_en_detalle(enlace) if enlace else None
-    sub["PDF BOPA"] = pdf_url
+    url_bopa = encontrar_url_bopa_html(enlace) if enlace else None
+    sub["URL BOPA"] = url_bopa
 
-    if pdf_url:
-        campos = analizar_pdf_con_gpt(pdf_url)
+    if url_bopa:
+        campos = analizar_html_con_gpt(url_bopa)
         sub.update(campos)
         sub["fuente_datos"] = "GPT"
     else:
