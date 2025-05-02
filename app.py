@@ -42,11 +42,10 @@ def encontrar_url_bopa_html(url_detalle):
     try:
         detalle_html = requests.get(url_detalle).text
         soup = BeautifulSoup(detalle_html, "html.parser")
-        enlaces = soup.find_all("a", href=True)
-        for a in enlaces:
-            href = a["href"]
-            if "bopa.ad/Documents/Detall" in href:
-                return href if href.startswith("http") else "https://www.bopa.ad" + href
+        enlace_bopa = soup.find("a", string=lambda s: s and "BOPA" in s)
+        if enlace_bopa and enlace_bopa.has_attr("href"):
+            href = enlace_bopa["href"]
+            return href if href.startswith("http") else "https://www.bopa.ad" + href
         return None
     except Exception as e:
         st.error(f"❌ Error al buscar enlace BOPA: {e}")
@@ -64,7 +63,7 @@ def analizar_html_con_gpt(url_bopa):
         texto = soup.get_text(separator="\n")
         texto = re.sub(r"\n+", "\n", texto).strip()
 
-        st.text_area("Texto legal crudo (preview)", texto[:3000])
+        st.text_area("Texto legal crudo (preview)", texto[:3000], key=url_bopa)
 
         prompt = f"""
 Eres un asistente experto en análisis legal. A continuación tienes el texto completo de una subasta publicada en el Boletín Oficial del Principado de Andorra.
