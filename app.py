@@ -65,7 +65,9 @@ def analizar_html_con_gpt(url_bopa):
         texto = re.sub(r"\n+", "\n", texto).strip()
 
         prompt = f"""
-Extrae la siguiente información del texto legal que encontrarás más abajo y responde únicamente con un diccionario JSON que contenga exactamente estas 6 claves:
+Eres un asistente experto en análisis legal. A continuación tienes el texto completo de una subasta publicada en el Boletín Oficial del Principado de Andorra.
+
+Extrae únicamente la siguiente información y devuelve un **JSON válido**, con exactamente estas 6 claves:
 - tipo_bien
 - precio_salida
 - fecha_limite
@@ -73,21 +75,31 @@ Extrae la siguiente información del texto legal que encontrarás más abajo y r
 - esta_alquilado
 - valor_mercado
 
-No añadas ninguna explicación adicional, solo devuelve un JSON válido.
+No incluyas explicaciones. Solo responde con un JSON puro. Ejemplo de formato:
+{{
+  "tipo_bien": "Vivienda",
+  "precio_salida": "150.000€",
+  "fecha_limite": "06-05-2025 16:00",
+  "cargas_adicionales": "Sí, deuda con FEDA",
+  "esta_alquilado": "No",
+  "valor_mercado": "200.000€"
+}}
+
 Texto:
 {texto[:8000]}
 """
-
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2
         )
+        content = response.choices[0].message.content.strip()
+        st.code(content, language="json")  # Para depuración visual
 
-        content = response.choices[0].message.content
-        st.code(content, language="json")  # Visualización en la app
+        if not content.startswith("{") or not content.endswith("}"):
+            raise ValueError("La respuesta no es un JSON válido")
+
         return json.loads(content)
-
     except Exception as e:
         st.error(f"❌ Error al analizar con GPT: {e}")
         return {
