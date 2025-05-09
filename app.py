@@ -37,7 +37,7 @@ def obtener_subastas():
         })
     return subastas
 
-# Agente 2: Extrae enlace al documento completo del BOPA (HTML, no PDF)
+# Agente 2: Extrae enlace al documento completo del BOPA (HTML)
 def encontrar_url_bopa_html(url_detalle):
     try:
         detalle_html = requests.get(url_detalle).text
@@ -45,8 +45,8 @@ def encontrar_url_bopa_html(url_detalle):
         enlace_bopa = soup.find("a", string=lambda s: s and "BOPA" in s)
         if enlace_bopa and enlace_bopa.has_attr("href"):
             href = enlace_bopa["href"]
-            if "Documents/Detall?doc=SAIGS_" in href:
-                return href if href.startswith("http") else "https://www.bopa.ad" + href
+            if href.startswith("/Documents/Detall?doc="):
+                return f"https://www.bopa.ad{href}"
         return None
     except Exception as e:
         st.error(f"❌ Error al buscar enlace BOPA: {e}")
@@ -58,14 +58,7 @@ def analizar_html_con_gpt(url_bopa):
         res = requests.get(url_bopa)
         soup = BeautifulSoup(res.text, "html.parser")
 
-        div_contenido = soup.find("div", class_="documentDetail")
-        if not div_contenido:
-            raise ValueError("No se encontró el contenido del BOPA")
-
-        for tag in div_contenido(["script", "style"]):
-            tag.decompose()
-
-        texto = div_contenido.get_text(separator="\n")
+        texto = soup.get_text(separator="\n")
         texto = re.sub(r"\n+", "\n", texto).strip()
 
         if not texto or len(texto.strip()) < 100:
