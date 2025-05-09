@@ -58,10 +58,14 @@ def analizar_html_con_gpt(url_bopa):
         res = requests.get(url_bopa)
         soup = BeautifulSoup(res.text, "html.parser")
 
-        for tag in soup(["script", "style"]):
+        div_contenido = soup.find("div", class_="documentDetail")
+        if not div_contenido:
+            raise ValueError("No se encontró el contenido del BOPA")
+
+        for tag in div_contenido(["script", "style"]):
             tag.decompose()
 
-        texto = soup.get_text(separator="\n")
+        texto = div_contenido.get_text(separator="\n")
         texto = re.sub(r"\n+", "\n", texto).strip()
 
         if not texto or len(texto.strip()) < 100:
