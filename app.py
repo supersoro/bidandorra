@@ -45,7 +45,10 @@ def encontrar_url_bopa_html(url_detalle):
         enlace_bopa = soup.find("a", string=lambda s: s and "BOPA" in s)
         if enlace_bopa and enlace_bopa.has_attr("href"):
             href = enlace_bopa["href"]
-            return href if href.startswith("http") else "https://www.bopa.ad" + href
+            match = re.search(r'doc=(SAIGS_\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2})', href)
+            if match:
+                doc_id = match.group(1)
+                return f"https://www.bopa.ad/DocRoot/{doc_id}.html"
         return None
     except Exception as e:
         st.error(f"❌ Error al buscar enlace BOPA: {e}")
