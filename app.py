@@ -6,10 +6,11 @@ import re
 import os
 import json
 from openai import OpenAI
+import fitz  # PyMuPDF
 
 st.set_page_config(page_title="Subastas Públicas de Andorra", page_icon="🔍")
 st.title("🔍 Subastas Públicas de Andorra")
-st.markdown("Versión Agentes - Diego Soro & Jefe 🇺🇸")
+st.markdown("Versión Agentes (con PDF) - Diego Soro & Jefe 🇦🇩")
 
 client = OpenAI()
 model = os.getenv("OPENAI_MODEL", "gpt-4")
@@ -37,34 +38,32 @@ def obtener_subastas():
         })
     return subastas
 
-# Agente 2: Extrae enlace al documento completo del BOPA (HTML)
-def encontrar_url_bopa_html(url_detalle):
+# Agente 2: Encuentra el enlace al PDF del BOPA
+def encontrar_url_pdf_bopa(url_detalle):
     try:
         detalle_html = requests.get(url_detalle).text
         soup = BeautifulSoup(detalle_html, "html.parser")
-        enlace_bopa = soup.find("a", string=lambda s: s and "BOPA" in s)
-        if enlace_bopa and enlace_bopa.has_attr("href"):
-            href = enlace_bopa["href"]
-            if href.startswith("/Documents/Detall?doc="):
-                return f"https://www.bopa.ad{href}"
+        enlace_pdf = soup.find("a", href=re.compile(r"\.pdf$"))
+        if enlace_pdf and enlace_pdf.has_attr("href"):
+            return enlace_pdf["href"] if enlace_pdf["href"].startswith("http") else f"https://www.bopa.ad{enlace_pdf['href']}"
         return None
     except Exception as e:
-        st.error(f"❌ Error al buscar enlace BOPA: {e}")
+        st.error(f"❌ Error al buscar PDF del BOPA: {e}")
         return None
 
-# Agente 3: Extrae texto del HTML del BOPA y lo interpreta con GPT
-def analizar_html_con_gpt(url_bopa):
+# Agente 3: Extrae texto del PDF y lo analiza con GPT
+def analizar_pdf_con_gpt(url_pdf):
     try:
-        res = requests.get(url_bopa)
-        soup = BeautifulSoup(res.text, "html.parser")
+        res = requests.get(url_pdf)
+        with open("temp_bopa.pdf", "wb") as f:
+            f.write(res.content)
 
-        texto = soup.get_text(separator="\n")
+        doc = fitz.open("temp_bopa.pdf")
+        texto = "\n".join([page.get_text() for page in doc])
+        doc.close()
+
         texto = re.sub(r"\n+", "\n", texto).strip()
-
-        if not texto or len(texto.strip()) < 100:
-            raise ValueError("El texto legal obtenido está vacío o incompleto.")
-
-        st.text_area("Texto legal crudo (preview)", texto[:3000], key=f"preview_{hash(url_bopa)}")
+        st.text_area("Texto legal del PDF (preview)", texto[:3000], key=f"pdf_preview_{hash(url_pdf)}")
 
         prompt = f"""
 Eres un asistente experto en análisis legal. A continuación tienes el texto completo de una subasta publicada en el Boletín Oficial del Principado de Andorra.
@@ -96,14 +95,14 @@ Texto:
             temperature=0.2
         )
         content = response.choices[0].message.content.strip()
-        st.code(content, language="json")  # Para depuración visual
+        st.code(content, language="json")
 
         if not content.startswith("{") or not content.endswith("}"):
             raise ValueError("La respuesta no es un JSON válido")
 
         return json.loads(content)
     except Exception as e:
-        st.error(f"❌ Error al analizar con GPT: {e}")
+        st.error(f"❌ Error al analizar PDF con GPT: {e}")
         return {
             "tipo_bien": None,
             "precio_salida": None,
@@ -113,33 +112,35 @@ Texto:
             "valor_mercado": None
         }
 
-# Ejecutar agentes 1, 2 y 3
-subastas = obtener_subastas()
-resultados = []
+# Ejecutar agentes
+def ejecutar_pipeline():
+    subastas = obtener_subastas()
+    resultados = []
 
-for sub in subastas:
-    enlace = sub.get("Enlace a detalle")
-    url_bopa = encontrar_url_bopa_html(enlace) if enlace else None
-    sub["URL BOPA"] = url_bopa
+    for sub in subastas:
+        url_detalle = sub.get("Enlace a detalle")
+        url_pdf = encontrar_url_pdf_bopa(url_detalle) if url_detalle else None
+        sub["PDF BOPA"] = url_pdf
 
-    if url_bopa:
-        campos = analizar_html_con_gpt(url_bopa)
-        sub.update(campos)
-        sub["fuente_datos"] = "GPT"
-    else:
-        sub.update({
-            "tipo_bien": None,
-            "precio_salida": None,
-            "fecha_limite": None,
-            "cargas_adicionales": None,
-            "esta_alquilado": None,
-            "valor_mercado": None,
-            "fuente_datos": "HTML"
-        })
-    resultados.append(sub)
+        if url_pdf:
+            campos = analizar_pdf_con_gpt(url_pdf)
+            sub.update(campos)
+            sub["fuente_datos"] = "GPT"
+        else:
+            sub.update({
+                "tipo_bien": None,
+                "precio_salida": None,
+                "fecha_limite": None,
+                "cargas_adicionales": None,
+                "esta_alquilado": None,
+                "valor_mercado": None,
+                "fuente_datos": "Fallo PDF"
+            })
+        resultados.append(sub)
 
-# Mostrar resultados en Streamlit
-df = pd.DataFrame(resultados)
-st.dataframe(df, use_container_width=True)
+    return pd.DataFrame(resultados)
 
-st.markdown("🧠 Próximamente: Agente de interpretación legal con GPT + Agente de mercado")
+# Mostrar en Streamlit
+df_resultados = ejecutar_pipeline()
+st.dataframe(df_resultados, use_container_width=True)
+st.markdown("🧠 Agente de análisis legal vía PDF + GPT. Prototipo funcional.")
