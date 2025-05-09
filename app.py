@@ -63,7 +63,10 @@ def analizar_html_con_gpt(url_bopa):
         texto = soup.get_text(separator="\n")
         texto = re.sub(r"\n+", "\n", texto).strip()
 
-        st.text_area("Texto legal crudo (preview)", texto[:3000], key=url_bopa)
+        if not texto or len(texto.strip()) < 100:
+            raise ValueError("El texto legal obtenido está vacío o incompleto.")
+
+        st.text_area("Texto legal crudo (preview)", texto[:3000], key=f"preview_{url_bopa}")
 
         prompt = f"""
 Eres un asistente experto en análisis legal. A continuación tienes el texto completo de una subasta publicada en el Boletín Oficial del Principado de Andorra.
