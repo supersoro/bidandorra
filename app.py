@@ -41,14 +41,26 @@ def obtener_subastas():
 # Agente 2: Encuentra el enlace al PDF del BOPA
 def encontrar_url_bopa_pdf(url_detalle):
     try:
+        # Paso 1: Entramos en la página de detalle de la subasta
         detalle_html = requests.get(url_detalle).text
         soup = BeautifulSoup(detalle_html, "html.parser")
-        link_pdf = soup.find("a", href=re.compile(r"Documents/plantilla-solicitud-execucio\\.pdf"))
-        if link_pdf:
-            return "https://www.bopa.ad" + link_pdf["href"]
+
+        # Paso 2: Buscamos el botón que enlaza al contenido del BOPA
+        link_bopa = soup.find("a", string=re.compile("BOPA", re.IGNORECASE))
+        if not link_bopa:
+            return None
+
+        url_bopa = "https://www.bopa.ad" + link_bopa["href"]
+
+        # Paso 3: Entramos a la página del BOPA y buscamos el PDF real
+        bopa_html = requests.get(url_bopa).text
+        soup_bopa = BeautifulSoup(bopa_html, "html.parser")
+        pdf_tag = soup_bopa.find("a", href=re.compile(r"\\.pdf$"))
+        if pdf_tag:
+            return "https://www.bopa.ad" + pdf_tag["href"]
         return None
     except Exception as e:
-        st.error(f"❌ Error al buscar PDF del BOPA: {e}")
+        st.error(f"❌ Error al buscar PDF real del BOPA: {e}")
         return None
 
 # Agente 3: Descarga y analiza el contenido del PDF con GPT
